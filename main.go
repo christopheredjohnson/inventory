@@ -7,16 +7,18 @@ import (
 const (
 	ScreenWidth  = 800
 	ScreenHeight = 600
-	TileSize     = 32
+	TileSize     = 16
 	MapWidth     = 20
 	MapHeight    = 15
 )
 
 var (
-	world  *World
-	player *Player
-	camera rl.Camera2D
-	ui     *UI
+	world          *World
+	player         *Player
+	camera         rl.Camera2D
+	ui             *UI
+	enemyTemplates map[string]EnemyTemplate
+	enemies        []*Enemy
 )
 
 func main() {
@@ -24,8 +26,33 @@ func main() {
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
 
-	tilesheet := rl.LoadTexture("assets/tiles.png")
+	tilesheet := rl.LoadTexture("assets/Ground/grass.png")
 	defer rl.UnloadTexture(tilesheet)
+
+	goblinTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/ClubGoblin.png")
+	defer rl.UnloadTexture(goblinTex)
+
+	orcTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/Orc.png")
+	defer rl.UnloadTexture(orcTex)
+
+	enemyTemplates = map[string]EnemyTemplate{
+		"Goblin": {
+			Name:       "Goblin",
+			MaxHealth:  40,
+			Texture:    goblinTex,
+			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
+			FrameCount: 5,
+			FrameSpeed: 0.2, // change frame every 0.2s
+		},
+		"Orc": {
+			Name:       "Orc",
+			MaxHealth:  100,
+			Texture:    orcTex,
+			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
+			FrameCount: 5,
+			FrameSpeed: 0.2, // change frame every 0.2s
+		},
+	}
 
 	world = NewWorld(tilesheet)
 	player = NewPlayer()
@@ -38,6 +65,11 @@ func main() {
 	)
 	// Optional: center player on screen initially
 	camera.Offset = rl.NewVector2(ScreenWidth/2, ScreenHeight/2)
+
+	enemies = []*Enemy{
+		NewEnemy(10, 10, enemyTemplates["Goblin"]),
+		NewEnemy(8, 8, enemyTemplates["Orc"]),
+	}
 
 	for !rl.WindowShouldClose() {
 		update()
@@ -53,6 +85,10 @@ func update() {
 		player.Pos.X+TileSize/2,
 		player.Pos.Y+TileSize/2,
 	)
+
+	for _, e := range enemies {
+		e.Update()
+	}
 }
 
 func draw() {
@@ -62,6 +98,10 @@ func draw() {
 
 	world.Draw()
 	player.Draw()
+
+	for _, enemy := range enemies {
+		enemy.Draw()
+	}
 
 	rl.EndMode2D()
 

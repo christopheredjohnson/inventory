@@ -21,11 +21,7 @@ func NewWorld(tilesheet rl.Texture2D) *World {
 	for y := 0; y < MapHeight; y++ {
 		world.Tiles[y] = make([]Tile, MapWidth)
 		for x := 0; x < MapWidth; x++ {
-			if x == 0 || x == MapWidth-1 || y == 0 || y == MapHeight-1 {
-				world.Tiles[y][x] = getTileByType("wall")
-			} else {
-				world.Tiles[y][x] = getTileByType("floor")
-			}
+			world.Tiles[y][x] = getTileByType("grass")
 		}
 	}
 
@@ -50,21 +46,22 @@ func (w *World) IsSolid(x, y int) bool {
 	if x < 0 || y < 0 || x >= MapWidth || y >= MapHeight {
 		return true
 	}
-	return w.Tiles[y][x].Solid
+	if w.Tiles[y][x].Solid {
+		return true
+	}
+	for _, e := range enemies {
+		if e.GridX == x && e.GridY == y {
+			return true
+		}
+	}
+	return false
 }
 
 func getTileByType(tileType string) Tile {
 	switch tileType {
-	case "wall":
-		return Tile{
-			Frame: rl.NewRectangle(32, 160, TileSize, TileSize), // wall tile in tilesheet
-			Solid: true,
-		}
-	case "floor":
-		fallthrough
 	default:
 		return Tile{
-			Frame: rl.NewRectangle(0, 128, TileSize, TileSize), // grass/floor tile
+			Frame: rl.NewRectangle(32, 0, TileSize, TileSize),
 			Solid: false,
 		}
 	}
