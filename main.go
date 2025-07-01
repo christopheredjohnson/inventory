@@ -34,6 +34,7 @@ var (
 
 	tickTimer    float32 = 0
 	tickInterval float32 = 0.6
+	inv          *Inventory
 )
 
 func main() {
@@ -46,6 +47,20 @@ func main() {
 
 	orcTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/Orc.png")
 	defer rl.UnloadTexture(orcTex)
+
+	iconTex := rl.LoadTexture("assets/User Interface/Icons-Essentials.png")
+	defer rl.UnloadTexture(iconTex)
+	inv = &Inventory{
+		Cols:        5,
+		Rows:        4,
+		SlotSize:    32,
+		SlotPadding: 4,
+		Position:    rl.NewVector2(10, 10),
+		ItemTexture: iconTex,
+		Slots:       make([]ItemSlot, 5*4),
+	}
+
+	inv.AddItem(&Item{Name: "Coin", Stackable: true, IconRect: rl.NewRectangle(0, 0, 16, 16)}, 10)
 
 	enemyTemplates = map[string]EnemyTemplate{
 		"Orc": {
@@ -125,7 +140,9 @@ func update() {
 	}
 	enemies = live
 
-	// camera.Target = rl.NewVector2(player.Pos.X+TileSize/2, player.Pos.Y+TileSize/2)
+	camera.Target = rl.NewVector2(player.Pos.X+TileSize/2, player.Pos.Y+TileSize/2)
+
+	inv.Update()
 }
 
 func draw() {
@@ -147,6 +164,6 @@ func draw() {
 	}
 
 	rl.EndMode2D()
-
+	inv.Draw()
 	rl.EndDrawing()
 }
