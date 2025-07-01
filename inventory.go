@@ -69,6 +69,11 @@ func (inv *Inventory) Draw() {
 			}
 		}
 	}
+
+	if inv.HeldItem != nil {
+		pos := rl.GetMousePosition()
+		rl.DrawTextureRec(inv.ItemTexture, inv.HeldItem.Item.IconRect, pos, rl.White)
+	}
 }
 
 func (inv *Inventory) Update() {

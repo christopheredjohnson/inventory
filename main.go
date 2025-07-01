@@ -49,6 +49,9 @@ func main() {
 	orcTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/Orc.png")
 	defer rl.UnloadTexture(orcTex)
 
+	slimeTex := rl.LoadTexture("assets/Characters/Monsters/Slimes/Slime.png")
+	defer rl.UnloadTexture(slimeTex)
+
 	iconTex := rl.LoadTexture("assets/User Interface/Icons-Essentials.png")
 	defer rl.UnloadTexture(iconTex)
 	inv = &Inventory{
@@ -73,6 +76,15 @@ func main() {
 			FrameSpeed: 0.2,
 			AgroRadius: 2,
 		},
+		"Slime": {
+			Name:       "Slime",
+			MaxHealth:  25,
+			Texture:    slimeTex,
+			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
+			FrameCount: 4,
+			FrameSpeed: 0.2,
+			AgroRadius: 2,
+		},
 	}
 
 	player = &Player{
@@ -86,7 +98,7 @@ func main() {
 
 	enemies = []*Enemy{
 		NewEnemy(10, 10, enemyTemplates["Orc"]),
-		NewEnemy(8, 8, enemyTemplates["Orc"]),
+		NewEnemy(8, 8, enemyTemplates["Slime"]),
 	}
 
 	camera = rl.NewCamera2D(
@@ -158,6 +170,10 @@ func update() {
 		}
 	}
 
+	for _, e := range enemies {
+		e.Update()
+	}
+
 	live := enemies[:0]
 	for _, e := range enemies {
 		if e.Health > 0 {
@@ -178,11 +194,11 @@ func draw() {
 	rl.BeginMode2D(camera)
 
 	// Draw grid
-	// for y := 0; y < MapHeight; y++ {
-	// 	for x := 0; x < MapWidth; x++ {
-	// 		rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
-	// 	}
-	// }
+	for y := 0; y < MapHeight; y++ {
+		for x := 0; x < MapWidth; x++ {
+			rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
+		}
+	}
 	player.Draw()
 
 	for _, e := range enemies {
