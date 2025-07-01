@@ -88,12 +88,14 @@ func main() {
 	}
 
 	player = &Player{
-		GridX:     2,
-		GridY:     2,
-		Pos:       rl.NewVector2(2*TileSize, 2*TileSize),
-		Health:    100,
-		MaxHealth: 100,
-		Texture:   playerTex,
+		GridX:      2,
+		GridY:      2,
+		Pos:        rl.NewVector2(2*TileSize, 2*TileSize),
+		Health:     100,
+		MaxHealth:  100,
+		Texture:    playerTex,
+		FrameCount: 4,
+		FrameSpeed: 0.2,
 	}
 
 	enemies = []*Enemy{
@@ -169,6 +171,9 @@ func update() {
 			e.PerformTick()
 		}
 	}
+
+	// animation frames
+	player.Update()
 
 	for _, e := range enemies {
 		e.Update()
