@@ -1,3 +1,4 @@
+// main.go
 package main
 
 import (
@@ -12,63 +13,80 @@ const (
 	MapHeight    = 15
 )
 
+type Tile struct {
+	Solid bool
+}
+
+type TilePos struct {
+	X, Y int
+}
+
+func (a TilePos) Equals(b TilePos) bool {
+	return a.X == b.X && a.Y == b.Y
+}
+
 var (
-	world          *World
+	worldTiles     [][]Tile
 	player         *Player
-	camera         rl.Camera2D
-	ui             *UI
-	enemyTemplates map[string]EnemyTemplate
 	enemies        []*Enemy
+	enemyTemplates map[string]EnemyTemplate
+	camera         rl.Camera2D
+
+	tickTimer    float32 = 0
+	tickInterval float32 = 0.6
 )
 
 func main() {
-	rl.InitWindow(ScreenWidth, ScreenHeight, "Tile-Based Game")
+	rl.InitWindow(ScreenWidth, ScreenHeight, "Real-Time Combat Game")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
 
-	tilesheet := rl.LoadTexture("assets/Ground/grass.png")
-	defer rl.UnloadTexture(tilesheet)
-
-	goblinTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/ClubGoblin.png")
-	defer rl.UnloadTexture(goblinTex)
+	playerTex := rl.LoadTexture("assets/Characters/Champions/Borg.png")
+	defer rl.UnloadTexture(playerTex)
 
 	orcTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/Orc.png")
 	defer rl.UnloadTexture(orcTex)
 
 	enemyTemplates = map[string]EnemyTemplate{
-		"Goblin": {
-			Name:       "Goblin",
-			MaxHealth:  40,
-			Texture:    goblinTex,
-			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
-			FrameCount: 5,
-			FrameSpeed: 0.2, // change frame every 0.2s
-		},
 		"Orc": {
 			Name:       "Orc",
-			MaxHealth:  100,
+			MaxHealth:  50,
 			Texture:    orcTex,
 			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
-			FrameCount: 5,
-			FrameSpeed: 0.2, // change frame every 0.2s
+			FrameCount: 4,
+			FrameSpeed: 0.2,
+			AgroRadius: 5,
 		},
 	}
 
-	world = NewWorld(tilesheet)
-	player = NewPlayer()
-	ui = NewUI(10, 10, 200, 60)
-	camera = rl.NewCamera2D(
-		rl.NewVector2(0, 0), // offset (filled in below)
-		rl.NewVector2(0, 0), // target (we’ll update this each frame)
-		0.0,                 // rotation
-		1.0,                 // zoom
-	)
-	// Optional: center player on screen initially
-	camera.Offset = rl.NewVector2(ScreenWidth/2, ScreenHeight/2)
+	player = &Player{
+		GridX:     2,
+		GridY:     2,
+		Pos:       rl.NewVector2(2*TileSize, 2*TileSize),
+		Health:    100,
+		MaxHealth: 100,
+		Texture:   playerTex,
+	}
 
 	enemies = []*Enemy{
-		NewEnemy(10, 10, enemyTemplates["Goblin"]),
+		NewEnemy(10, 10, enemyTemplates["Orc"]),
 		NewEnemy(8, 8, enemyTemplates["Orc"]),
+	}
+
+	camera = rl.NewCamera2D(
+		rl.NewVector2(0, 0),
+		rl.NewVector2(float32(player.Pos.X+TileSize/2), float32(player.Pos.Y+TileSize/2)),
+		0.0, 1.0,
+	)
+	camera.Offset = rl.NewVector2(ScreenWidth/2, ScreenHeight/2)
+
+	// Simple empty world
+	worldTiles = make([][]Tile, MapHeight)
+	for y := range worldTiles {
+		worldTiles[y] = make([]Tile, MapWidth)
+		for x := range worldTiles[y] {
+			worldTiles[y][x] = Tile{Solid: false}
+		}
 	}
 
 	for !rl.WindowShouldClose() {
@@ -78,34 +96,57 @@ func main() {
 }
 
 func update() {
-	player.Update()
 
-	// Center camera on the middle of the player
-	camera.Target = rl.NewVector2(
-		player.Pos.X+TileSize/2,
-		player.Pos.Y+TileSize/2,
-	)
+	if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+		mouse := rl.GetMousePosition()
+		worldPos := rl.GetScreenToWorld2D(mouse, camera)
+		tx := int(worldPos.X) / TileSize
+		ty := int(worldPos.Y) / TileSize
 
-	for _, e := range enemies {
-		e.Update()
+		if !isSolid(tx, ty) {
+			player.Path = FindPath(TilePos{player.GridX, player.GridY}, TilePos{tx, ty})
+		}
 	}
+
+	tickTimer += rl.GetFrameTime()
+	if tickTimer >= tickInterval {
+		tickTimer -= tickInterval
+		player.PerformTick()
+		for _, e := range enemies {
+			e.PerformTick()
+		}
+	}
+
+	live := enemies[:0]
+	for _, e := range enemies {
+		if e.Health > 0 {
+			live = append(live, e)
+		}
+	}
+	enemies = live
+
+	// camera.Target = rl.NewVector2(player.Pos.X+TileSize/2, player.Pos.Y+TileSize/2)
 }
 
 func draw() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
+
 	rl.BeginMode2D(camera)
 
-	world.Draw()
+	// Draw grid
+	for y := 0; y < MapHeight; y++ {
+		for x := 0; x < MapWidth; x++ {
+			rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
+		}
+	}
 	player.Draw()
 
-	for _, enemy := range enemies {
-		enemy.Draw()
+	for _, e := range enemies {
+		e.Draw()
 	}
 
 	rl.EndMode2D()
-
-	ui.Draw()
 
 	rl.EndDrawing()
 }
