@@ -26,6 +26,7 @@ func (a TilePos) Equals(b TilePos) bool {
 }
 
 var (
+	showDebug      = true
 	worldTiles     [][]Tile
 	player         *Player
 	enemies        []*Enemy
@@ -70,7 +71,7 @@ func main() {
 			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
 			FrameCount: 4,
 			FrameSpeed: 0.2,
-			AgroRadius: 5,
+			AgroRadius: 2,
 		},
 	}
 
@@ -91,8 +92,10 @@ func main() {
 	camera = rl.NewCamera2D(
 		rl.NewVector2(0, 0),
 		rl.NewVector2(float32(player.Pos.X+TileSize/2), float32(player.Pos.Y+TileSize/2)),
-		0.0, 1.0,
+		0.0,
+		3.0,
 	)
+
 	camera.Offset = rl.NewVector2(ScreenWidth/2, ScreenHeight/2)
 
 	// Simple empty world
@@ -112,6 +115,25 @@ func main() {
 
 func update() {
 
+	mouseWorld := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+	scroll := rl.GetMouseWheelMove()
+	if scroll != 0 {
+		// oldZoom := camera.Zoom
+		camera.Zoom += scroll * 0.1
+
+		// Clamp zoom
+		if camera.Zoom < 0.5 {
+			camera.Zoom = 0.5
+		}
+		if camera.Zoom > 3.0 {
+			camera.Zoom = 3.0
+		}
+
+		// Adjust camera target to maintain mouse position
+		diff := rl.Vector2Subtract(mouseWorld, rl.GetScreenToWorld2D(rl.GetMousePosition(), camera))
+		camera.Target = rl.Vector2Add(camera.Target, diff)
+	}
+
 	if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 		mouse := rl.GetMousePosition()
 		worldPos := rl.GetScreenToWorld2D(mouse, camera)
@@ -121,6 +143,10 @@ func update() {
 		if !isSolid(tx, ty) {
 			player.Path = FindPath(TilePos{player.GridX, player.GridY}, TilePos{tx, ty})
 		}
+	}
+
+	if rl.IsKeyPressed(rl.KeyF3) {
+		showDebug = !showDebug
 	}
 
 	tickTimer += rl.GetFrameTime()
@@ -152,11 +178,11 @@ func draw() {
 	rl.BeginMode2D(camera)
 
 	// Draw grid
-	for y := 0; y < MapHeight; y++ {
-		for x := 0; x < MapWidth; x++ {
-			rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
-		}
-	}
+	// for y := 0; y < MapHeight; y++ {
+	// 	for x := 0; x < MapWidth; x++ {
+	// 		rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
+	// 	}
+	// }
 	player.Draw()
 
 	for _, e := range enemies {

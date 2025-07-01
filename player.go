@@ -33,6 +33,7 @@ func (p *Player) PerformTick() {
 
 func (p *Player) Draw() {
 	rl.DrawTextureRec(p.Texture, rl.NewRectangle(0, 0, TileSize, TileSize), p.Pos, rl.White)
+
 	rl.DrawRectangle(int32(p.Pos.X), int32(p.Pos.Y)-6, TileSize, 4, rl.DarkGray)
 	hpPct := float32(p.Health) / float32(p.MaxHealth)
 	rl.DrawRectangle(int32(p.Pos.X), int32(p.Pos.Y)-6, int32(hpPct*TileSize), 4, rl.Red)

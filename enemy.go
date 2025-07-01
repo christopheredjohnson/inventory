@@ -92,4 +92,16 @@ func (e *Enemy) Draw() {
 	rl.DrawRectangle(int32(e.Pos.X), int32(e.Pos.Y)-6, int32(barW), int32(barH), rl.DarkGray)
 	hpPct := float32(e.Health) / float32(e.Template.MaxHealth)
 	rl.DrawRectangle(int32(e.Pos.X), int32(e.Pos.Y)-6, int32(hpPct*float32(barW)), int32(barH), rl.Green)
+
+	if showDebug {
+		tileRange := e.Template.AgroRadius
+		tileX := e.GridX
+		tileY := e.GridY
+
+		left := (tileX - tileRange) * TileSize
+		top := (tileY - tileRange) * TileSize
+		size := (tileRange*2 + 1) * TileSize
+
+		rl.DrawRectangleLines(int32(left), int32(top), int32(size), int32(size), rl.ColorAlpha(rl.Red, 0.6))
+	}
 }

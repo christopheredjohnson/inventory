@@ -56,7 +56,14 @@ func (inv *Inventory) Draw() {
 		rl.DrawRectangleLinesEx(rect, 1, rl.Black)
 
 		if slot.Item != nil {
-			// rl.DrawTextureRec(inv.ItemTexture, slot.Item.IconRect, rl.NewVector2(x, y), rl.White)
+			iconW := slot.Item.IconRect.Width
+			iconH := slot.Item.IconRect.Height
+			offsetX := (float32(inv.SlotSize) - iconW) / 2
+			offsetY := (float32(inv.SlotSize) - iconH) / 2
+			destPos := rl.NewVector2(x+offsetX, y+offsetY)
+
+			rl.DrawTextureRec(inv.ItemTexture, slot.Item.IconRect, destPos, rl.White)
+
 			if slot.Item.Stackable && slot.Count > 1 {
 				rl.DrawText(fmt.Sprintf("%d", slot.Count), int32(x+2), int32(y+2), 12, rl.Yellow)
 			}
