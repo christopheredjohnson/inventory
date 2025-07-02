@@ -88,14 +88,16 @@ func main() {
 	}
 
 	player = &Player{
-		GridX:      2,
-		GridY:      2,
-		Pos:        rl.NewVector2(2*TileSize, 2*TileSize),
-		Health:     100,
-		MaxHealth:  100,
-		Texture:    playerTex,
-		FrameCount: 4,
-		FrameSpeed: 0.2,
+		GridX:     2,
+		GridY:     2,
+		Pos:       rl.NewVector2(2*TileSize, 2*TileSize),
+		Health:    100,
+		MaxHealth: 100,
+		Texture:   playerTex,
+		Animation: Animation{
+			FrameCount: 4,
+			FrameSpeed: 0.2,
+		},
 	}
 
 	enemies = []*Enemy{
@@ -128,7 +130,6 @@ func main() {
 }
 
 func update() {
-
 	mouseWorld := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 	scroll := rl.GetMouseWheelMove()
 	if scroll != 0 {

@@ -9,11 +9,7 @@ type Player struct {
 	MaxHealth    int
 	Path         []TilePos
 	Texture      rl.Texture2D
-
-	FrameIndex int
-	FrameTimer float32
-	FrameCount int
-	FrameSpeed float32
+	Animation    Animation
 }
 
 func (p *Player) PerformTick() {
@@ -37,17 +33,13 @@ func (p *Player) PerformTick() {
 }
 
 func (p *Player) Update() {
-	p.FrameTimer += rl.GetFrameTime()
-	if p.FrameTimer >= p.FrameSpeed {
-		p.FrameTimer = 0
-		p.FrameIndex = (p.FrameIndex + 1) % p.FrameCount
-	}
+	p.Animation.Update()
 }
 
 func (p *Player) Draw() {
 
-	src := rl.NewRectangle(float32(p.FrameIndex*TileSize), 0, TileSize, TileSize)
-	rl.DrawTextureRec(p.Texture, src, p.Pos, rl.White)
+	frame := p.Animation.FrameRect(rl.NewRectangle(0, 0, TileSize, TileSize))
+	rl.DrawTextureRec(p.Texture, frame, p.Pos, rl.White)
 
 	rl.DrawRectangle(int32(p.Pos.X), int32(p.Pos.Y)-6, TileSize, 4, rl.DarkGray)
 	hpPct := float32(p.Health) / float32(p.MaxHealth)

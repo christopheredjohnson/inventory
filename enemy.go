@@ -18,9 +18,7 @@ type Enemy struct {
 	Health       int
 	Template     EnemyTemplate
 	Path         []TilePos
-
-	FrameIndex int
-	FrameTimer float32
+	Animation    Animation
 }
 
 func NewEnemy(x, y int, tmpl EnemyTemplate) *Enemy {
@@ -30,6 +28,10 @@ func NewEnemy(x, y int, tmpl EnemyTemplate) *Enemy {
 		Pos:      rl.NewVector2(float32(x*TileSize), float32(y*TileSize)),
 		Health:   tmpl.MaxHealth,
 		Template: tmpl,
+		Animation: Animation{
+			FrameCount: tmpl.FrameCount,
+			FrameSpeed: tmpl.FrameSpeed,
+		},
 	}
 }
 
@@ -86,23 +88,16 @@ func (e *Enemy) PerformTick() {
 }
 
 func (e *Enemy) Update() {
-	if e.Health <= 0 {
-		return
-	}
-	e.FrameTimer += rl.GetFrameTime()
-	if e.FrameTimer >= e.Template.FrameSpeed {
-		e.FrameTimer = 0
-		e.FrameIndex = (e.FrameIndex + 1) % e.Template.FrameCount
-	}
+	e.Animation.Update()
 }
 
 func (e *Enemy) Draw() {
 	if e.Health <= 0 {
 		return
 	}
-	frame := e.Template.Frame
-	frame.X = float32(e.FrameIndex) * frame.Width
+	frame := e.Animation.FrameRect(e.Template.Frame)
 	rl.DrawTextureRec(e.Template.Texture, frame, e.Pos, rl.White)
+
 	barW := TileSize
 	barH := 4
 	rl.DrawRectangle(int32(e.Pos.X), int32(e.Pos.Y)-6, int32(barW), int32(barH), rl.DarkGray)
