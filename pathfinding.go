@@ -6,8 +6,7 @@ type Node struct {
 	From *Node
 }
 
-func FindPath(start, goal TilePos) []TilePos {
-
+func FindPath(floor *Floor, start, goal TilePos, player *Player, enemies []*Enemy) []TilePos {
 	open := []*Node{}
 	closed := map[TilePos]bool{}
 	startNode := &Node{Pos: start}
@@ -40,7 +39,7 @@ func FindPath(start, goal TilePos) []TilePos {
 		}
 		for _, d := range dirs {
 			nx, ny := pos.X+d.X, pos.Y+d.Y
-			if !isSolid(nx, ny) {
+			if !isSolid(floor, nx, ny, player, enemies) {
 				out = append(out, struct {
 					Pos  TilePos
 					Cost int
@@ -50,7 +49,7 @@ func FindPath(start, goal TilePos) []TilePos {
 		return out
 	}
 
-	// Chebyshev distance (since we allow diagonal moves)
+	// Chebyshev distance (diagonal allowed)
 	heuristic := func(a, b TilePos) int {
 		dx := abs(a.X - b.X)
 		dy := abs(a.Y - b.Y)
@@ -110,19 +109,18 @@ func removeNode(slice []*Node, target *Node) []*Node {
 	return out
 }
 
-func isSolid(x, y int) bool {
-	if x < 0 || y < 0 || x >= MapWidth || y >= MapHeight {
+func isSolid(floor *Floor, x, y int, player *Player, enemies []*Enemy) bool {
+	if x < 0 || y < 0 || x >= floor.Width || y >= floor.Height {
 		return true
 	}
-	if worldTiles[y][x].Solid {
+	if floor.Tiles[y][x].Solid {
 		return true
 	}
-	for _, e := range enemies {
+	for _, e := range floor.Enemies { // optionally use floor.Enemies directly
 		if e.GridX == x && e.GridY == y && e.Health > 0 {
 			return true
 		}
 	}
-	// BLOCK PLAYER TILE
 	if player.GridX == x && player.GridY == y {
 		return true
 	}

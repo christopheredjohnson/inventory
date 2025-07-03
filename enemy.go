@@ -35,17 +35,17 @@ func NewEnemy(x, y int, tmpl EnemyTemplate) *Enemy {
 	}
 }
 
-func (e *Enemy) PerformTick() {
+func (e *Enemy) PerformTick(floor *Floor, player *Player) {
 	if e.Health <= 0 {
 		return
 	}
 
-	// Distance to player
 	dx := player.GridX - e.GridX
 	dy := player.GridY - e.GridY
 	dist := max(abs(dx), abs(dy))
 
 	if dist <= e.Template.AgroRadius {
+		// Attack if adjacent
 		if abs(dx) <= 1 && abs(dy) <= 1 && !(dx == 0 && dy == 0) {
 			player.Health -= 10
 			e.Path = nil
@@ -55,29 +55,31 @@ func (e *Enemy) PerformTick() {
 		playerPos := TilePos{player.GridX, player.GridY}
 		enemyPos := TilePos{e.GridX, e.GridY}
 
+		// Recalculate path if it's empty or outdated
 		if len(e.Path) == 0 || !e.Path[len(e.Path)-1].Equals(playerPos) {
-			// Find all walkable adjacent tiles around the player
+			// Get walkable tiles around player
 			dirs := []TilePos{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}}
-			var closest []TilePos
+			var targets []TilePos
 			for _, d := range dirs {
 				tx, ty := playerPos.X+d.X, playerPos.Y+d.Y
-				if !isSolid(tx, ty) {
-					closest = append(closest, TilePos{tx, ty})
+				if !isSolid(floor, tx, ty, player, floor.Enemies) {
+					targets = append(targets, TilePos{tx, ty})
 				}
 			}
 
-			// Try finding a path to the first valid adjacent tile
-			for _, target := range closest {
-				if path := FindPath(enemyPos, target); path != nil {
+			// Try path to closest available spot
+			for _, target := range targets {
+				if path := FindPath(floor, enemyPos, target, player, floor.Enemies); path != nil {
 					e.Path = path
 					break
 				}
 			}
 		}
 
+		// Follow path
 		if len(e.Path) > 0 {
 			next := e.Path[0]
-			if !isSolid(next.X, next.Y) {
+			if !isSolid(floor, next.X, next.Y, player, floor.Enemies) {
 				e.GridX = next.X
 				e.GridY = next.Y
 				e.Pos = rl.NewVector2(float32(e.GridX*TileSize), float32(e.GridY*TileSize))
@@ -95,8 +97,24 @@ func (e *Enemy) Draw() {
 	if e.Health <= 0 {
 		return
 	}
-	frame := e.Animation.FrameRect(e.Template.Frame)
-	rl.DrawTextureRec(e.Template.Texture, frame, e.Pos, rl.White)
+
+	frame := e.Animation.FrameRect(rl.NewRectangle(0, 0, 16, 32)) // source sprite
+
+	src := frame
+	dest := rl.NewRectangle(
+		e.Pos.X,    // X stays the same
+		e.Pos.Y-16, // shift Y up by 16px to align bottom to grid
+		16,         // draw width
+		32,         // draw height
+	)
+
+	origin := rl.NewVector2(0, 0)
+	rotation := float32(0)
+
+	rl.DrawTexturePro(e.Template.Texture, src, dest, origin, rotation, rl.White)
+
+	// frame := e.Animation.FrameRect(e.Template.Frame)
+	// rl.DrawTextureRec(e.Template.Texture, frame, e.Pos, rl.White)
 
 	barW := TileSize
 	barH := 4

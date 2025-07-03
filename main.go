@@ -26,8 +26,9 @@ func (a TilePos) Equals(b TilePos) bool {
 }
 
 var (
+	dungeon        *Dungeon
+	currentFloor   *Floor
 	showDebug      = true
-	worldTiles     [][]Tile
 	player         *Player
 	enemies        []*Enemy
 	enemyTemplates map[string]EnemyTemplate
@@ -36,6 +37,8 @@ var (
 	tickTimer    float32 = 0
 	tickInterval float32 = 0.6
 	inv          *Inventory
+
+	tilesetTexture rl.Texture2D
 )
 
 func main() {
@@ -43,25 +46,17 @@ func main() {
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
 
-	playerTex := rl.LoadTexture("assets/Characters/Champions/Borg.png")
-	defer rl.UnloadTexture(playerTex)
+	tilesetTexture = rl.LoadTexture("assets/tileset.png")
+	defer rl.UnloadTexture(tilesetTexture)
 
-	orcTex := rl.LoadTexture("assets/Characters/Monsters/Orcs/Orc.png")
-	defer rl.UnloadTexture(orcTex)
-
-	slimeTex := rl.LoadTexture("assets/Characters/Monsters/Slimes/Slime.png")
-	defer rl.UnloadTexture(slimeTex)
-
-	iconTex := rl.LoadTexture("assets/User Interface/Icons-Essentials.png")
-	defer rl.UnloadTexture(iconTex)
 	inv = &Inventory{
 		Cols:        5,
 		Rows:        4,
 		SlotSize:    32,
 		SlotPadding: 4,
 		Position:    rl.NewVector2(10, 10),
-		ItemTexture: iconTex,
-		Slots:       make([]ItemSlot, 5*4),
+		// ItemTexture: playerTex,
+		Slots: make([]ItemSlot, 5*4),
 	}
 
 	inv.AddItem(&Item{Name: "Coin", Stackable: true, IconRect: rl.NewRectangle(0, 0, 16, 16)}, 10)
@@ -70,20 +65,20 @@ func main() {
 		"Orc": {
 			Name:       "Orc",
 			MaxHealth:  50,
-			Texture:    orcTex,
+			Texture:    tilesetTexture,
 			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
-			FrameCount: 4,
+			FrameCount: 6,
 			FrameSpeed: 0.2,
-			AgroRadius: 2,
+			AgroRadius: 10,
 		},
 		"Slime": {
 			Name:       "Slime",
 			MaxHealth:  25,
-			Texture:    slimeTex,
+			Texture:    tilesetTexture,
 			Frame:      rl.NewRectangle(0, 0, TileSize, TileSize),
 			FrameCount: 4,
 			FrameSpeed: 0.2,
-			AgroRadius: 2,
+			AgroRadius: 10,
 		},
 	}
 
@@ -93,16 +88,11 @@ func main() {
 		Pos:       rl.NewVector2(2*TileSize, 2*TileSize),
 		Health:    100,
 		MaxHealth: 100,
-		Texture:   playerTex,
+		Texture:   tilesetTexture,
 		Animation: Animation{
-			FrameCount: 4,
+			FrameCount: 8,
 			FrameSpeed: 0.2,
 		},
-	}
-
-	enemies = []*Enemy{
-		NewEnemy(10, 10, enemyTemplates["Orc"]),
-		NewEnemy(8, 8, enemyTemplates["Slime"]),
 	}
 
 	camera = rl.NewCamera2D(
@@ -114,14 +104,15 @@ func main() {
 
 	camera.Offset = rl.NewVector2(ScreenWidth/2, ScreenHeight/2)
 
-	// Simple empty world
-	worldTiles = make([][]Tile, MapHeight)
-	for y := range worldTiles {
-		worldTiles[y] = make([]Tile, MapWidth)
-		for x := range worldTiles[y] {
-			worldTiles[y][x] = Tile{Solid: false}
-		}
-	}
+	dungeon = &Dungeon{Floors: map[int]*Floor{}}
+	dungeon.Floors[0] = GenerateRandomFloor(50, 40, 8)
+
+	// fmt.Printf("%v", currentFloor)
+	currentFloor = dungeon.Floors[0]
+
+	player.GridX = currentFloor.SpawnPoint.X
+	player.GridY = currentFloor.SpawnPoint.Y
+	player.Pos = rl.NewVector2(float32(player.GridX*TileSize), float32(player.GridY*TileSize))
 
 	for !rl.WindowShouldClose() {
 		update()
@@ -155,8 +146,8 @@ func update() {
 		tx := int(worldPos.X) / TileSize
 		ty := int(worldPos.Y) / TileSize
 
-		if !isSolid(tx, ty) {
-			player.Path = FindPath(TilePos{player.GridX, player.GridY}, TilePos{tx, ty})
+		if !isSolid(currentFloor, tx, ty, player, enemies) {
+			player.Path = FindPath(currentFloor, TilePos{player.GridX, player.GridY}, TilePos{tx, ty}, player, currentFloor.Enemies)
 		}
 	}
 
@@ -167,26 +158,26 @@ func update() {
 	tickTimer += rl.GetFrameTime()
 	if tickTimer >= tickInterval {
 		tickTimer -= tickInterval
-		player.PerformTick()
-		for _, e := range enemies {
-			e.PerformTick()
+		player.PerformTick(currentFloor)
+		for _, e := range currentFloor.Enemies {
+			e.PerformTick(currentFloor, player)
 		}
 	}
 
 	// animation frames
 	player.Update()
 
-	for _, e := range enemies {
+	for _, e := range currentFloor.Enemies {
 		e.Update()
 	}
 
-	live := enemies[:0]
-	for _, e := range enemies {
+	live := currentFloor.Enemies[:0]
+	for _, e := range currentFloor.Enemies {
 		if e.Health > 0 {
 			live = append(live, e)
 		}
 	}
-	enemies = live
+	currentFloor.Enemies = live
 
 	camera.Target = rl.NewVector2(player.Pos.X+TileSize/2, player.Pos.Y+TileSize/2)
 
@@ -195,23 +186,29 @@ func update() {
 
 func draw() {
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.Black)
+	rl.ClearBackground(rl.Magenta)
 
 	rl.BeginMode2D(camera)
 
-	// Draw grid
-	for y := 0; y < MapHeight; y++ {
-		for x := 0; x < MapWidth; x++ {
-			rl.DrawRectangleLines(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, rl.DarkGray)
+	for y := 0; y < currentFloor.Height; y++ {
+		for x := 0; x < currentFloor.Width; x++ {
+			tile := currentFloor.Tiles[y][x]
+			// Optionally color solid tiles differently
+			color := rl.DarkGray
+			if tile.Solid {
+				color = rl.Black
+			}
+			rl.DrawRectangle(int32(x*TileSize), int32(y*TileSize), TileSize, TileSize, color)
 		}
 	}
+
 	player.Draw()
 
-	for _, e := range enemies {
+	for _, e := range currentFloor.Enemies {
 		e.Draw()
 	}
 
 	rl.EndMode2D()
-	inv.Draw()
+	// inv.Draw()
 	rl.EndDrawing()
 }
