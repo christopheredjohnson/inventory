@@ -30,7 +30,6 @@ var (
 	currentFloor   *Floor
 	showDebug      = true
 	player         *Player
-	enemies        []*Enemy
 	enemyTemplates map[string]EnemyTemplate
 	camera         rl.Camera2D
 
@@ -146,7 +145,7 @@ func update() {
 		tx := int(worldPos.X) / TileSize
 		ty := int(worldPos.Y) / TileSize
 
-		if !isSolid(currentFloor, tx, ty, player, enemies) {
+		if !isSolid(currentFloor, tx, ty, player, currentFloor.Enemies) {
 			player.Path = FindPath(currentFloor, TilePos{player.GridX, player.GridY}, TilePos{tx, ty}, player, currentFloor.Enemies)
 		}
 	}
@@ -209,6 +208,6 @@ func draw() {
 	}
 
 	rl.EndMode2D()
-	// inv.Draw()
+	inv.Draw()
 	rl.EndDrawing()
 }
