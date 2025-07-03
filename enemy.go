@@ -46,7 +46,7 @@ func (e *Enemy) PerformTick() {
 	dist := max(abs(dx), abs(dy))
 
 	if dist <= e.Template.AgroRadius {
-		if abs(dx)+abs(dy) == 1 {
+		if abs(dx) <= 1 && abs(dy) <= 1 && !(dx == 0 && dy == 0) {
 			player.Health -= 10
 			e.Path = nil
 			return
